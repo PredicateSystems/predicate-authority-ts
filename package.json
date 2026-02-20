@@ -18,6 +18,7 @@
     "test": "vitest run",
     "test:integration": "RUN_SIDECAR_INTEGRATION_TESTS=true vitest run tests/integration.sidecar.test.ts",
     "test:watch": "vitest",
+    "smoke:npm": "bash ./smoke-from-npm.sh",
     "security:audit": "npm audit --audit-level=high",
     "precommit": "npm run lint && npm run typecheck && npm test",
     "prepare": "husky",

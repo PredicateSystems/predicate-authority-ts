@@ -27,10 +27,17 @@ Use this checklist before publishing `@predicatesystems/authority`.
 Choose one:
 
 - Tag-based: push `vX.Y.Z` tag to trigger `.github/workflows/release.yml`.
+- Prerelease tag-based: push `rc-vX.Y.Z` tag to publish with npm `next` dist-tag.
 - Manual: run release workflow dispatch with explicit `version`.
+  - optional: choose `dist_tag=next` for release candidates.
+  - optional: set `contracts_version` to enforce a `@predicatesystems/contracts` availability gate.
 
 - [ ] Verify npm publish step completed successfully.
 - [ ] Verify package appears on npm (`npm view @predicatesystems/authority version`).
+- [ ] Run npm install smoke check:
+  - `npm run smoke:npm -- latest` (install/import check)
+  - optional live check: `SIDECAR_BASE_URL=http://127.0.0.1:8787 npm run smoke:npm -- latest`
+- [ ] Run GitHub Actions manual smoke workflow (`.github/workflows/post-publish-smoke.yml`) and attach logs to release evidence.
 
 ## 5) Post-release
 

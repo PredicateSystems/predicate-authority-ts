@@ -216,6 +216,8 @@ GitHub Actions workflows are included for:
 
 - test/build checks on push/PR: `.github/workflows/test.yml`
 - npm release on `v*` tags or manual dispatch: `.github/workflows/release.yml`
+  - prerelease path: `rc-v*` tags publish to npm `next` dist-tag
+- manual post-publish smoke evidence: `.github/workflows/post-publish-smoke.yml`
 
 Required GitHub secret:
 
@@ -225,6 +227,14 @@ Release docs:
 
 - `CHANGELOG.md`
 - `docs/release-checklist.md`
+
+Post-publish smoke:
+
+```bash
+npm run smoke:npm -- latest
+# optional live sidecar authorize check
+SIDECAR_BASE_URL=http://127.0.0.1:8787 npm run smoke:npm -- latest
+```
 
 ## Contributing
 
