@@ -22,6 +22,27 @@ export { isPolicyRule } from "./contracts/policy-rule.js";
 export type { ProofEvent } from "./contracts/proof-event.js";
 export { isProofEvent } from "./contracts/proof-event.js";
 export { isLabelPassed, passedLabels } from "./contracts/verification.js";
+export {
+  buildWebStateEvidenceFromRuntimeSnapshot,
+  buildWebStateEvidence,
+  type RuntimeSnapshotLike,
+  type WebStateEvidenceOptions,
+  type WebStateSnapshot,
+  webStateSnapshotFromRuntimeSnapshot,
+} from "./evidence/web-state.js";
+export {
+  buildDesktopAccessibilityStateEvidence,
+  buildTerminalStateEvidence,
+  collectVerificationEvidence,
+  type DesktopAccessibilityEvidenceProvider,
+  type DesktopAccessibilitySnapshot,
+  type DesktopStateEvidenceOptions,
+  type EvidenceHasher,
+  type TerminalEvidenceProvider,
+  type TerminalSessionSnapshot,
+  type TerminalStateEvidenceOptions,
+  type VerificationSignalProvider,
+} from "./evidence/non-web.js";
 
 // Backward-compatible alias for the initial scaffold API.
 export type { SidecarAuthorizeRequest as AuthorizationRequest } from "./contracts/action-request.js";

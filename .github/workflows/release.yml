@@ -4,11 +4,25 @@ on:
   push:
     tags:
       - "v*"
+      - "rc-v*"
   workflow_dispatch:
     inputs:
       version:
         description: "Version to publish (e.g., 0.1.0)"
         required: true
+        type: string
+      dist_tag:
+        description: "npm dist-tag (latest or next)"
+        required: false
+        default: "latest"
+        type: choice
+        options:
+          - latest
+          - next
+      contracts_version:
+        description: "Optional required predicate-contracts-ts version gate"
+        required: false
+        default: ""
         type: string
 
 jobs:
@@ -30,19 +44,36 @@ jobs:
           scope: "@predicatesystems"
 
       - name: Determine version
-        id: version
+        id: release
         run: |
+          DIST_TAG="latest"
+          PRERELEASE="false"
+          CONTRACTS_VERSION=""
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version }}"
+            DIST_TAG="${{ github.event.inputs.dist_tag }}"
+            CONTRACTS_VERSION="${{ github.event.inputs.contracts_version }}"
+            if [ "$DIST_TAG" = "next" ]; then
+              PRERELEASE="true"
+            fi
           else
             TAG="${GITHUB_REF_NAME}"
-            VERSION="${TAG#v}"
+            if [[ "$TAG" == rc-v* ]]; then
+              VERSION="${TAG#rc-v}"
+              DIST_TAG="next"
+              PRERELEASE="true"
+            else
+              VERSION="${TAG#v}"
+            fi
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "VERSION=$VERSION"
+          echo "dist_tag=$DIST_TAG" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          echo "contracts_version=$CONTRACTS_VERSION" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION DIST_TAG=$DIST_TAG PRERELEASE=$PRERELEASE CONTRACTS_VERSION=$CONTRACTS_VERSION"
 
       - name: Sync package version
-        run: npm pkg set version=${{ steps.version.outputs.version }}
+        run: npm pkg set version=${{ steps.release.outputs.version }}
 
       - name: Install dependencies
         run: npm install
@@ -52,7 +83,18 @@ jobs:
         env:
           CI: true
 
+      - name: Guard predicate-contracts-ts version availability
+        if: steps.release.outputs.contracts_version != ''
+        run: npm view "@predicatesystems/contracts@${{ steps.release.outputs.contracts_version }}" version
+
       - name: Publish
-        run: npm publish --access public --provenance
+        run: npm publish --access public --provenance --tag ${{ steps.release.outputs.dist_tag }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish GitHub release notes
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push'
+        with:
+          generate_release_notes: true
+          prerelease: ${{ steps.release.outputs.prerelease }}

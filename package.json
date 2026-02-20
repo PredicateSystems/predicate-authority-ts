@@ -14,9 +14,14 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
+    "lint": "biome check src tests",
     "test": "vitest run",
     "test:integration": "RUN_SIDECAR_INTEGRATION_TESTS=true vitest run tests/integration.sidecar.test.ts",
     "test:watch": "vitest",
+    "smoke:npm": "bash ./smoke-from-npm.sh",
+    "security:audit": "npm audit --audit-level=high",
+    "precommit": "npm run lint && npm run typecheck && npm test",
+    "prepare": "husky",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
@@ -38,7 +43,9 @@
     "security"
   ],
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@types/node": "^22.13.10",
+    "husky": "^9.1.7",
     "typescript": "^5.8.2",
     "vitest": "^3.0.8"
   }

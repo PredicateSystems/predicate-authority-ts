@@ -2,21 +2,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AUTHORIZATION_REASONS,
   AuthorityClient,
-  AuthorityClientError,
-  POLICY_EFFECTS,
-  VERIFICATION_STATUSES,
-  type AuthorizeRequest,
   type AuthorizationDecision,
   type AuthorizationResponse,
+  type AuthorizeRequest,
   type MandateClaims,
+  POLICY_EFFECTS,
   type SignedMandate,
+  VERIFICATION_STATUSES,
   isAuthorizationDecision,
   isLabelPassed,
   isMandateClaims,
   isPolicyRule,
   isProofEvent,
-  passedLabels,
   isSignedMandate,
+  passedLabels,
   toSidecarAuthorizeRequest,
 } from "../src/index.js";
 import { fixtureParsed, jsonResponse } from "./utils/fixtures.js";
@@ -97,6 +96,44 @@ describe("AuthorityClient", () => {
       code: "timeout",
       message: "authorize request timed out",
     });
+  });
+
+  it("retries network errors and succeeds within retry budget", async () => {
+    const request = fixtureParsed<AuthorizeRequest>("authorize-request.json");
+    const allowResponse = fixtureParsed<AuthorizationResponse>("authorize-response-allow.json");
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("connect ECONNREFUSED"))
+      .mockResolvedValueOnce(jsonResponse(allowResponse, 200));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new AuthorityClient({
+      baseUrl: "http://127.0.0.1:8787",
+      maxRetries: 1,
+      backoffInitialMs: 0,
+    });
+    const result = await client.authorize(request);
+    expect(result.allowed).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries on 5xx response and eventually succeeds", async () => {
+    const request = fixtureParsed<AuthorizeRequest>("authorize-request.json");
+    const allowResponse = fixtureParsed<AuthorizationResponse>("authorize-response-allow.json");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: "temporary" }, 503))
+      .mockResolvedValueOnce(jsonResponse(allowResponse, 200));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new AuthorityClient({
+      baseUrl: "http://127.0.0.1:8787",
+      maxRetries: 1,
+      backoffInitialMs: 0,
+    });
+    const result = await client.authorize(request);
+    expect(result.allowed).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("supports /authorize compatibility alias when configured", async () => {

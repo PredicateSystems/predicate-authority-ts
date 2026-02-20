@@ -1,6 +1,6 @@
 import type { ActionRequest } from "../contracts/action-request.js";
+import type { PolicyEngine } from "../policy/engine.js";
 import type { AuthorizationDecision, SignedMandate } from "../types.js";
-import { PolicyEngine } from "../policy/engine.js";
 
 export class AuthorizationDeniedError extends Error {
   readonly decision: AuthorizationDecision;

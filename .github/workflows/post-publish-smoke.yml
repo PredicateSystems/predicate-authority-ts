@@ -1,0 +1,38 @@
+name: Post-publish smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version to smoke test (e.g., latest, 0.1.0)"
+        required: false
+        default: "latest"
+        type: string
+      sidecar_base_url:
+        description: "Optional sidecar URL for live authorize smoke"
+        required: false
+        default: ""
+        type: string
+      sidecar_smoke_request_json:
+        description: "Optional JSON request payload for live authorize smoke"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run npm install/import smoke
+        run: bash ./smoke-from-npm.sh "${{ inputs.version }}"
+        env:
+          SIDECAR_BASE_URL: ${{ inputs.sidecar_base_url }}
+          SIDECAR_SMOKE_REQUEST_JSON: ${{ inputs.sidecar_smoke_request_json }}

@@ -78,6 +78,19 @@ if (!decision.allowed) {
 }
 ```
 
+### Sidecar client retry/timeout tuning
+
+```ts
+import { AuthorityClient } from "@predicatesystems/authority";
+
+const client = new AuthorityClient({
+  baseUrl: "http://127.0.0.1:8787",
+  timeoutMs: 2000,        // per-attempt timeout
+  maxRetries: 2,          // retry budget on network/5xx failures
+  backoffInitialMs: 200,  // linear backoff base (attempt * base)
+});
+```
+
 ### Choose your runtime mode
 
 - **Sidecar client mode (recommended):** use `AuthorityClient` to call
@@ -129,6 +142,41 @@ if (!decision.allowed) {
 }
 ```
 
+### Runtime adapter examples (TS frameworks)
+
+See `docs/runtime-adapters.md` for copy-paste adapter patterns that map common
+agent/tool runtime operations to authority checks in both:
+
+- sidecar-first mode (`AuthorityClient`), and
+- local wrapper mode (`ActionGuard` + `guardedShell`/`guardedFile*`/`guardedHttp`).
+
+### Web-first state evidence helper
+
+Use `buildWebStateEvidence(...)` to map browser snapshot artifacts into canonical
+`state_evidence`:
+
+```ts
+import { buildWebStateEvidence } from "@predicatesystems/authority";
+
+const stateEvidence = buildWebStateEvidence({
+  snapshot: {
+    url: "https://app.example.com/transfer",
+    title: "Transfer Funds",
+    dom_hash: "dom_hash_here",
+    visible_text_hash: "text_hash_here",
+    observed_at: new Date().toISOString(),
+  },
+});
+```
+
+If your runtime already produces `sdk-ts` snapshots, use
+`buildWebStateEvidenceFromRuntimeSnapshot(...)` to map `timestamp`,
+`dominant_group_key`, and diagnostics confidence directly.
+
+Non-web evidence contracts are also available for Phase 4 adapter work:
+`TerminalEvidenceProvider`, `DesktopAccessibilityEvidenceProvider`, and
+`VerificationSignalProvider` (see `docs/runtime-adapters.md`).
+
 ## Local Development
 
 ```bash
@@ -150,12 +198,26 @@ npm run test:integration
 GitHub Actions `test.yml` also supports optional integration execution via
 manual `workflow_dispatch` inputs (`run_integration`, `sidecar_base_url`).
 
+For explicit allow/deny integration assertions, you can pass request fixtures:
+
+```bash
+export RUN_SIDECAR_INTEGRATION_TESTS=true
+export SIDECAR_BASE_URL="http://127.0.0.1:8787"
+export SIDECAR_ALLOW_REQUEST_JSON='{"principal":"agent:allow","action":"http.get","resource":"https://example.com","intent_hash":"ih_allow"}'
+export SIDECAR_DENY_REQUEST_JSON='{"principal":"agent:deny","action":"http.post","resource":"https://example.com/admin","intent_hash":"ih_deny"}'
+export SIDECAR_EXPECTED_DENY_REASON="missing_required_verification"
+export SIDECAR_REQUIRE_MANDATE_ON_ALLOW=false
+npm run test:integration
+```
+
 ## Release
 
 GitHub Actions workflows are included for:
 
 - test/build checks on push/PR: `.github/workflows/test.yml`
 - npm release on `v*` tags or manual dispatch: `.github/workflows/release.yml`
+  - prerelease path: `rc-v*` tags publish to npm `next` dist-tag
+- manual post-publish smoke evidence: `.github/workflows/post-publish-smoke.yml`
 
 Required GitHub secret:
 
@@ -166,9 +228,32 @@ Release docs:
 - `CHANGELOG.md`
 - `docs/release-checklist.md`
 
+Post-publish smoke:
+
+```bash
+npm run smoke:npm -- latest
+# optional live sidecar authorize check
+SIDECAR_BASE_URL=http://127.0.0.1:8787 npm run smoke:npm -- latest
+```
+
 ## Contributing
 
 See `CONTRIBUTING.md` for branch, test, integration, and release conventions.
+
+## Troubleshooting
+
+Common failure modes and first checks:
+
+- `AuthorityClientError: timeout`
+  - sidecar may be unreachable or overloaded; verify sidecar health and increase `timeoutMs` for slow environments.
+- `AuthorityClientError: network_error`
+  - check `baseUrl`, local networking, and whether `predicate-authorityd` is listening on expected host/port.
+- `AuthorityClientError: protocol_error`
+  - sidecar returned non-JSON or unexpected payload shape; verify sidecar version compatibility.
+- `AuthorityClientError: bad_request`
+  - request payload is invalid for `/v1/authorize`; compare fields with the fixture examples in `tests/fixtures/`.
+- Frequent retries before success
+  - tune `maxRetries` and `backoffInitialMs`; investigate sidecar/host resource pressure.
 
 ## License
 
