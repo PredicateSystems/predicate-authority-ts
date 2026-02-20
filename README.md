@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/v/@predicatesystems/authority.svg)](https://www.npmjs.com/package/@predicatesystems/authority)
 
 `@predicatesystems/authority` is the TypeScript SDK companion to the Python
-`predicate-authorityd` sidecar from `AgentIdentity`. It keeps authority
+`predicate-authorityd` sidecar from [predicate-authority (Python)](https://github.com/PredicateSystems/predicate-authority-ts). It keeps authority
 decisions in the sidecar and gives Node/TS runtimes a thin, typed client for
 fail-closed pre-execution checks.
 
@@ -34,6 +34,20 @@ Out of scope for this package:
 
 - re-implementing policy engine or mandate logic in TypeScript,
 - replacing Python sidecar/control-plane authority logic.
+
+## Known Python Parity Baseline
+
+This package targets compatibility with the current Python authority baseline in
+[predicate-authority (Python)](https://github.com/PredicateSystems/predicate-authority-ts):
+
+- sidecar authorize route: `POST /v1/authorize` (`/authorize` compat alias),
+- mandate/token baseline: ES256-default signing + standard JWT claim envelope,
+- revocation baseline: explicit cascade semantics and global kill-switch runtime behavior,
+- control-plane baseline: long-poll policy/revocation sync (runtime baseline),
+- control-plane write hardening: replay freshness headers/signature support on Python client paths.
+
+The TS SDK should preserve compatibility with these runtime behaviors before
+adding TS-specific extensions.
 
 ## Installation
 
