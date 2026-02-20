@@ -9,15 +9,18 @@ import {
 export type {
   ActionRequest,
   ActionSpec,
+  AuthorizationDecision,
   AuthorizationRequest,
   AuthorizationReason,
   AuthorizeRequest,
   AuthorizationResponse,
+  MandateClaims,
   PolicyEffect,
   PolicyRule,
   PrincipalRef,
   ProofEvent,
   SidecarAuthorizeRequest,
+  SignedMandate,
   StateEvidence,
   VerificationEvidence,
   VerificationSignal,
@@ -28,10 +31,23 @@ export {
   AUTHORIZATION_REASONS,
   POLICY_EFFECTS,
   VERIFICATION_STATUSES,
+  isAuthorizationDecision,
+  isMandateClaims,
+  isLabelPassed,
   isPolicyRule,
   isProofEvent,
+  passedLabels,
+  isSignedMandate,
   toSidecarAuthorizeRequest,
 } from "./types.js";
+export { effectiveMaxDelegationDepth, globMatch, matchesRule } from "./policy/matching.js";
+export { PolicyEngine, type PolicyMatchResult } from "./policy/engine.js";
+export {
+  ActionGuard,
+  AuthorizationDeniedError,
+  type ActionExecutionResult,
+  type ActionGuardOptions,
+} from "./guard/action-guard.js";
 
 export interface AuthorityClientOptions {
   baseUrl: string;

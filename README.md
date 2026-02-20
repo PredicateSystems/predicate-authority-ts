@@ -78,6 +78,57 @@ if (!decision.allowed) {
 }
 ```
 
+### Choose your runtime mode
+
+- **Sidecar client mode (recommended):** use `AuthorityClient` to call
+  `predicate-authorityd` (`/v1/authorize`) as the authority source of truth.
+- **Local guard mode (optional):** use `PolicyEngine + ActionGuard` for local
+  evaluation in TS runtime flows (useful for tests/dev or controlled deployments).
+
+### Local guard mode example (`PolicyEngine + ActionGuard`)
+
+```ts
+import {
+  ActionGuard,
+  PolicyEngine,
+  type ActionRequest,
+  type PolicyRule,
+} from "@predicatesystems/authority";
+
+const rules: PolicyRule[] = [
+  {
+    name: "allow-transfer-submit",
+    effect: "allow",
+    principals: ["agent:payments"],
+    actions: ["http.post"],
+    resources: ["https://finance.example.com/transfers"],
+    required_labels: ["verified:user_presence"],
+  },
+];
+
+const guard = new ActionGuard({
+  policyEngine: new PolicyEngine(rules),
+});
+
+const request: ActionRequest = {
+  principal: { principal_id: "agent:payments" },
+  action_spec: {
+    action: "http.post",
+    resource: "https://finance.example.com/transfers",
+    intent: "submit transfer #123",
+  },
+  state_evidence: { source: "browser", state_hash: "state_abc" },
+  verification_evidence: {
+    signals: [{ label: "verified:user_presence", status: "passed" }],
+  },
+};
+
+const decision = guard.authorize(request);
+if (!decision.allowed) {
+  throw new Error(`Local guard denied: ${decision.reason}`);
+}
+```
+
 ## Local Development
 
 ```bash

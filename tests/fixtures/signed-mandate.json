@@ -1,0 +1,15 @@
+{
+  "token": "header.payload.signature",
+  "claims": {
+    "mandate_id": "mdt_abc123",
+    "principal_id": "agent:payments",
+    "action": "http.post",
+    "resource": "https://finance.example.com/transfers",
+    "intent_hash": "ih_transfer_123",
+    "state_hash": "sh_abc",
+    "issued_at_epoch_s": 1730072390,
+    "expires_at_epoch_s": 1730072690,
+    "delegation_depth": 0
+  },
+  "signature": "sig_abc123"
+}

@@ -1,4 +1,5 @@
 import type { VerificationStatus } from "./enums.js";
+import { passedLabels } from "./verification.js";
 
 export interface PrincipalRef {
   principal_id: string;
@@ -54,9 +55,7 @@ export function toSidecarAuthorizeRequest(request: AuthorizeRequest): SidecarAut
   if (isSidecarAuthorizeRequest(request)) {
     return request;
   }
-  const labels = (request.verification_evidence?.signals ?? [])
-    .filter((signal) => signal.status === "passed")
-    .map((signal) => signal.label);
+  const labels = passedLabels(request.verification_evidence);
   const intentHash = stableIntentHashFromIntent(request.action_spec.intent);
   return {
     principal: request.principal.principal_id,
