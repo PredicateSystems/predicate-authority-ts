@@ -40,6 +40,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Lint
+        run: npm run lint
+
       - name: Run tests
         run: npm test
         env:
@@ -47,6 +50,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Dependency audit (high+)
+        run: npm run security:audit
 
       - name: Run sidecar integration tests
         if: github.event_name == 'workflow_dispatch' && inputs.run_integration

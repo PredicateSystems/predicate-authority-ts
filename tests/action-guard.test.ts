@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ActionGuard,
-  AuthorizationDeniedError,
   type ActionRequest,
-  type PolicyRule,
+  AuthorizationDeniedError,
   PolicyEngine,
+  type PolicyRule,
   type SignedMandate,
 } from "../src/index.js";
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  type ActionRequest,
+  type PolicyRule,
   effectiveMaxDelegationDepth,
   globMatch,
   matchesRule,
-  type ActionRequest,
-  type PolicyRule,
 } from "../src/index.js";
 
 describe("policy matching parity helpers", () => {

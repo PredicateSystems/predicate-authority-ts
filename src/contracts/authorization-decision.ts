@@ -1,5 +1,5 @@
 import type { AuthorizationReason } from "./enums.js";
-import { isSignedMandate, type SignedMandate } from "./mandate.js";
+import { type SignedMandate, isSignedMandate } from "./mandate.js";
 
 export interface AuthorizationDecision {
   allowed: boolean;

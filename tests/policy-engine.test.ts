@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   type ActionRequest,
-  type PolicyRule,
   PolicyEngine,
+  type PolicyRule,
 } from "../src/index.js";
 
 function requestBase(): ActionRequest {

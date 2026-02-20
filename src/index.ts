@@ -1,7 +1,7 @@
 import { AuthorityClientError } from "./errors.js";
 import {
-  type AuthorizeRequest,
   type AuthorizationResponse,
+  type AuthorizeRequest,
   isAuthorizationResponse,
   toSidecarAuthorizeRequest,
 } from "./types.js";
@@ -48,76 +48,138 @@ export {
   type ActionExecutionResult,
   type ActionGuardOptions,
 } from "./guard/action-guard.js";
+export {
+  guardedFileRead,
+  guardedFileWrite,
+  guardedHttp,
+  guardedShell,
+  type GuardedFileReadOptions,
+  type GuardedFileWriteOptions,
+  type GuardedHttpOptions,
+  type GuardedShellOptions,
+} from "./wrappers/sensitive-operations.js";
+export {
+  buildWebStateEvidenceFromRuntimeSnapshot,
+  buildWebStateEvidence,
+  type RuntimeSnapshotLike,
+  type WebStateEvidenceOptions,
+  type WebStateSnapshot,
+  webStateSnapshotFromRuntimeSnapshot,
+} from "./evidence/web-state.js";
+export {
+  buildDesktopAccessibilityStateEvidence,
+  buildTerminalStateEvidence,
+  collectVerificationEvidence,
+  type DesktopAccessibilityEvidenceProvider,
+  type DesktopAccessibilitySnapshot,
+  type DesktopStateEvidenceOptions,
+  type EvidenceHasher,
+  type TerminalEvidenceProvider,
+  type TerminalSessionSnapshot,
+  type TerminalStateEvidenceOptions,
+  type VerificationSignalProvider,
+} from "./evidence/non-web.js";
 
 export interface AuthorityClientOptions {
   baseUrl: string;
   timeoutMs?: number;
+  maxRetries?: number;
+  backoffInitialMs?: number;
   endpointPath?: "/v1/authorize" | "/authorize";
 }
 
 export class AuthorityClient {
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
+  private readonly maxRetries: number;
+  private readonly backoffInitialMs: number;
   private readonly endpointPath: "/v1/authorize" | "/authorize";
 
   constructor(options: AuthorityClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
     this.timeoutMs = options.timeoutMs ?? 2000;
+    this.maxRetries = options.maxRetries ?? 0;
+    this.backoffInitialMs = options.backoffInitialMs ?? 200;
     this.endpointPath = options.endpointPath ?? "/v1/authorize";
   }
 
   async authorize(request: AuthorizeRequest): Promise<AuthorizationResponse> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const wireRequest = toSidecarAuthorizeRequest(request);
+    const attempts = this.maxRetries + 1;
 
-    try {
-      let response: Response;
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
       try {
-        response = await fetch(`${this.baseUrl}${this.endpointPath}`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-          },
-          body: JSON.stringify(toSidecarAuthorizeRequest(request)),
-          signal: controller.signal,
-        });
-      } catch (error) {
-        if (error instanceof Error && error.name === "AbortError") {
-          throw new AuthorityClientError("authorize request timed out", {
-            code: "timeout",
+        let response: Response;
+        try {
+          response = await fetch(`${this.baseUrl}${this.endpointPath}`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+            },
+            body: JSON.stringify(wireRequest),
+            signal: controller.signal,
+          });
+        } catch (error) {
+          if (attempt < this.maxRetries) {
+            await sleep(this.backoffInitialMs * (attempt + 1));
+            continue;
+          }
+          if (error instanceof Error && error.name === "AbortError") {
+            throw new AuthorityClientError("authorize request timed out", {
+              code: "timeout",
+              cause: error,
+            });
+          }
+          throw new AuthorityClientError("authorize request failed before response", {
+            code: "network_error",
             cause: error,
           });
         }
-        throw new AuthorityClientError("authorize request failed before response", {
-          code: "network_error",
-          cause: error,
-        });
-      }
 
-      const payload = await parseJsonSafely(response);
+        const payload = await parseJsonSafely(response);
 
-      // Sidecar deny decisions intentionally return HTTP 403 with decision body.
-      if (response.status === 403 && isAuthorizationResponse(payload)) {
+        // Sidecar deny decisions intentionally return HTTP 403 with decision body.
+        if (response.status === 403 && isAuthorizationResponse(payload)) {
+          return payload;
+        }
+
+        if (!response.ok) {
+          if (response.status >= 500 && attempt < this.maxRetries) {
+            await sleep(this.backoffInitialMs * (attempt + 1));
+            continue;
+          }
+          throw mapHttpError(response.status, payload);
+        }
+
+        if (!isAuthorizationResponse(payload)) {
+          throw new AuthorityClientError("invalid authorize response payload", {
+            code: "protocol_error",
+            status: response.status,
+            details: payload,
+          });
+        }
+
         return payload;
+      } finally {
+        clearTimeout(timer);
       }
-
-      if (!response.ok) {
-        throw mapHttpError(response.status, payload);
-      }
-
-      if (!isAuthorizationResponse(payload)) {
-        throw new AuthorityClientError("invalid authorize response payload", {
-          code: "protocol_error",
-          status: response.status,
-          details: payload,
-        });
-      }
-
-      return payload;
-    } finally {
-      clearTimeout(timer);
     }
+
+    throw new AuthorityClientError("authorize request exhausted retry budget", {
+      code: "network_error",
+    });
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) {
+    return Promise.resolve();
+  }
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 async function parseJsonSafely(response: Response): Promise<unknown> {
