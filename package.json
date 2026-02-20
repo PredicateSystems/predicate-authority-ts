@@ -1,0 +1,44 @@
+{
+  "name": "@predicatesystems/authority",
+  "version": "0.1.0",
+  "description": "TypeScript authority SDK for Predicate Systems sidecar integration.",
+  "license": "(MIT OR Apache-2.0)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE*"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Predicate-Labs/ts-predicate-authority.git"
+  },
+  "keywords": [
+    "predicate",
+    "authority",
+    "typescript",
+    "sdk",
+    "security"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.13.10",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}
