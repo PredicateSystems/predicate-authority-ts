@@ -1,16 +1,37 @@
 import { AuthorityClientError } from "./errors.js";
 import {
-  type AuthorizationRequest,
+  type AuthorizeRequest,
   type AuthorizationResponse,
   isAuthorizationResponse,
+  toSidecarAuthorizeRequest,
 } from "./types.js";
 
 export type {
-  AuthorizationReason,
+  ActionRequest,
+  ActionSpec,
   AuthorizationRequest,
+  AuthorizationReason,
+  AuthorizeRequest,
   AuthorizationResponse,
+  PolicyEffect,
+  PolicyRule,
+  PrincipalRef,
+  ProofEvent,
+  SidecarAuthorizeRequest,
+  StateEvidence,
+  VerificationEvidence,
+  VerificationSignal,
+  VerificationStatus,
 } from "./types.js";
 export { AuthorityClientError, type AuthorityClientErrorCode } from "./errors.js";
+export {
+  AUTHORIZATION_REASONS,
+  POLICY_EFFECTS,
+  VERIFICATION_STATUSES,
+  isPolicyRule,
+  isProofEvent,
+  toSidecarAuthorizeRequest,
+} from "./types.js";
 
 export interface AuthorityClientOptions {
   baseUrl: string;
@@ -29,7 +50,7 @@ export class AuthorityClient {
     this.endpointPath = options.endpointPath ?? "/v1/authorize";
   }
 
-  async authorize(request: AuthorizationRequest): Promise<AuthorizationResponse> {
+  async authorize(request: AuthorizeRequest): Promise<AuthorizationResponse> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
@@ -41,7 +62,7 @@ export class AuthorityClient {
           headers: {
             "content-type": "application/json",
           },
-          body: JSON.stringify(request),
+          body: JSON.stringify(toSidecarAuthorizeRequest(request)),
           signal: controller.signal,
         });
       } catch (error) {
