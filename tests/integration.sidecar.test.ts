@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AuthorityClient, type AuthorizationRequest } from "../src/index.js";
+import { AuthorityClient, type SidecarAuthorizeRequest } from "../src/index.js";
 
 const sidecarBaseUrl = process.env.SIDECAR_BASE_URL;
 const shouldRun = process.env.RUN_SIDECAR_INTEGRATION_TESTS === "true" && !!sidecarBaseUrl;
@@ -9,7 +9,7 @@ const maybeIt = shouldRun ? it : it.skip;
 describe("AuthorityClient sidecar integration", () => {
   maybeIt("returns structured decision from running sidecar", async () => {
     const client = new AuthorityClient({ baseUrl: sidecarBaseUrl as string, timeoutMs: 4000 });
-    const request: AuthorizationRequest = {
+    const request: SidecarAuthorizeRequest = {
       principal: "agent:test",
       action: "http.get",
       resource: "https://example.com",

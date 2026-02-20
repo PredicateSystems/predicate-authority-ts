@@ -110,6 +110,15 @@ Required GitHub secret:
 
 - `NPM_TOKEN` with publish access for `@predicatesystems`.
 
+Release docs:
+
+- `CHANGELOG.md`
+- `docs/release-checklist.md`
+
+## Contributing
+
+See `CONTRIBUTING.md` for branch, test, integration, and release conventions.
+
 ## License
 
 Dual-licensed under **MIT** and **Apache 2.0**:
