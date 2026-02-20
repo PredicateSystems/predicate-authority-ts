@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   AUTHORIZATION_REASONS,
@@ -9,19 +6,20 @@ import {
   POLICY_EFFECTS,
   VERIFICATION_STATUSES,
   type AuthorizeRequest,
+  type AuthorizationDecision,
   type AuthorizationResponse,
+  type MandateClaims,
+  type SignedMandate,
+  isAuthorizationDecision,
+  isLabelPassed,
+  isMandateClaims,
   isPolicyRule,
   isProofEvent,
+  passedLabels,
+  isSignedMandate,
   toSidecarAuthorizeRequest,
 } from "../src/index.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-function fixture<T>(name: string): T {
-  const raw = readFileSync(join(__dirname, "fixtures", name), "utf-8");
-  return JSON.parse(raw) as T;
-}
+import { fixtureParsed, jsonResponse } from "./utils/fixtures.js";
 
 describe("AuthorityClient", () => {
   afterEach(() => {
@@ -29,13 +27,10 @@ describe("AuthorityClient", () => {
   });
 
   it("calls /v1/authorize and parses allow response fixture", async () => {
-    const request = fixture<AuthorizeRequest>("authorize-request.json");
-    const allowResponse = fixture<AuthorizationResponse>("authorize-response-allow.json");
+    const request = fixtureParsed<AuthorizeRequest>("authorize-request.json");
+    const allowResponse = fixtureParsed<AuthorizationResponse>("authorize-response-allow.json");
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(allowResponse), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+      jsonResponse(allowResponse, 200),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -52,16 +47,11 @@ describe("AuthorityClient", () => {
   });
 
   it("returns deny payload on HTTP 403 decision response", async () => {
-    const request = fixture<AuthorizeRequest>("authorize-request.json");
-    const denyResponse = fixture<AuthorizationResponse>("authorize-response-deny.json");
+    const request = fixtureParsed<AuthorizeRequest>("authorize-request.json");
+    const denyResponse = fixtureParsed<AuthorizationResponse>("authorize-response-deny.json");
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(denyResponse), {
-          status: 403,
-          headers: { "content-type": "application/json" },
-        }),
-      ),
+      vi.fn().mockResolvedValue(jsonResponse(denyResponse, 403)),
     );
 
     const client = new AuthorityClient({ baseUrl: "http://127.0.0.1:8787" });
@@ -72,16 +62,11 @@ describe("AuthorityClient", () => {
   });
 
   it("maps HTTP 400 to typed bad_request error", async () => {
-    const request = fixture<AuthorizeRequest>("authorize-request.json");
-    const badRequest = fixture<{ error: string }>("authorize-error-bad-request.json");
+    const request = fixtureParsed<AuthorizeRequest>("authorize-request.json");
+    const badRequest = fixtureParsed<{ error: string }>("authorize-error-bad-request.json");
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        new Response(JSON.stringify(badRequest), {
-          status: 400,
-          headers: { "content-type": "application/json" },
-        }),
-      ),
+      vi.fn().mockResolvedValue(jsonResponse(badRequest, 400)),
     );
 
     const client = new AuthorityClient({ baseUrl: "http://127.0.0.1:8787" });
@@ -93,7 +78,7 @@ describe("AuthorityClient", () => {
   });
 
   it("maps network failures to typed network_error", async () => {
-    const request = fixture<AuthorizeRequest>("authorize-request.json");
+    const request = fixtureParsed<AuthorizeRequest>("authorize-request.json");
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("connect ECONNREFUSED")));
 
     const client = new AuthorityClient({ baseUrl: "http://127.0.0.1:8787" });
@@ -103,7 +88,7 @@ describe("AuthorityClient", () => {
   });
 
   it("maps abort errors to typed timeout", async () => {
-    const request = fixture<AuthorizeRequest>("authorize-request.json");
+    const request = fixtureParsed<AuthorizeRequest>("authorize-request.json");
     const abortError = Object.assign(new Error("aborted"), { name: "AbortError" });
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(abortError));
 
@@ -115,13 +100,10 @@ describe("AuthorityClient", () => {
   });
 
   it("supports /authorize compatibility alias when configured", async () => {
-    const request = fixture<AuthorizeRequest>("authorize-request.json");
-    const allowResponse = fixture<AuthorizationResponse>("authorize-response-allow.json");
+    const request = fixtureParsed<AuthorizeRequest>("authorize-request.json");
+    const allowResponse = fixtureParsed<AuthorizationResponse>("authorize-response-allow.json");
     const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify(allowResponse), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      }),
+      jsonResponse(allowResponse, 200),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -207,5 +189,35 @@ describe("AuthorityClient", () => {
     expect(isProofEvent(event)).toBe(true);
     expect(isPolicyRule({ ...rule, effect: "invalid" })).toBe(false);
     expect(isProofEvent({ ...event, emitted_at_epoch_s: "bad" })).toBe(false);
+  });
+
+  it("validates MandateClaims and SignedMandate fixtures", () => {
+    const claims = fixtureParsed<MandateClaims>("mandate-claims.json");
+    const signed = fixtureParsed<SignedMandate>("signed-mandate.json");
+    expect(isMandateClaims(claims)).toBe(true);
+    expect(isSignedMandate(signed)).toBe(true);
+    expect(isMandateClaims({ ...claims, issued_at_epoch_s: "bad" })).toBe(false);
+    expect(isSignedMandate({ ...signed, signature: null })).toBe(false);
+  });
+
+  it("validates full AuthorizationDecision fixture", () => {
+    const decision = fixtureParsed<AuthorizationDecision>("authorization-decision.json");
+    expect(isAuthorizationDecision(decision)).toBe(true);
+    expect(isAuthorizationDecision({ ...decision, reason: 123 })).toBe(false);
+    expect(isAuthorizationDecision({ ...decision, missing_labels: [1, 2] })).toBe(false);
+  });
+
+  it("mirrors python verification evidence label-pass semantics", () => {
+    const evidence = {
+      signals: [
+        { label: "verified:user_presence", status: "passed" as const },
+        { label: "verified:captcha", status: "failed" as const },
+      ],
+    };
+    expect(isLabelPassed(evidence, "verified:user_presence")).toBe(true);
+    expect(isLabelPassed(evidence, "verified:captcha")).toBe(false);
+    expect(isLabelPassed(evidence, "unknown:label")).toBe(false);
+    expect(isLabelPassed(undefined, "verified:user_presence")).toBe(false);
+    expect(passedLabels(evidence)).toEqual(["verified:user_presence"]);
   });
 });

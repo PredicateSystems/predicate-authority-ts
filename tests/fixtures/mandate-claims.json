@@ -1,0 +1,18 @@
+{
+  "mandate_id": "mdt_abc123",
+  "principal_id": "agent:payments",
+  "action": "http.post",
+  "resource": "https://finance.example.com/transfers",
+  "intent_hash": "ih_transfer_123",
+  "state_hash": "sh_abc",
+  "issued_at_epoch_s": 1730072390,
+  "expires_at_epoch_s": 1730072690,
+  "delegation_depth": 0,
+  "iss": "predicate-authorityd",
+  "aud": "predicate-authority",
+  "sub": "agent:payments",
+  "iat": 1730072390,
+  "exp": 1730072690,
+  "nbf": 1730072390,
+  "jti": "jti_123"
+}
