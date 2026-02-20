@@ -1,6 +1,6 @@
 {
   "name": "@predicatesystems/authority",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "TypeScript authority SDK for Predicate Systems sidecar integration.",
   "license": "(MIT OR Apache-2.0)",
   "type": "module",
@@ -33,7 +33,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Predicate-Labs/ts-predicate-authority.git"
+    "url": "https://github.com/PredicateSystems/predicate-authority-ts.git"
   },
   "keywords": [
     "predicate",
