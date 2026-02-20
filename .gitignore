@@ -6,3 +6,4 @@ coverage/
 .env
 .env.*
 !.env.example
+predicatesystems-authority-*.tgz
