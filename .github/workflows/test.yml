@@ -5,6 +5,18 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      run_integration:
+        description: "Run sidecar integration tests"
+        required: false
+        default: false
+        type: boolean
+      sidecar_base_url:
+        description: "Sidecar base URL for integration tests"
+        required: false
+        default: "http://127.0.0.1:8787"
+        type: string
 
 jobs:
   test:
@@ -35,3 +47,10 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Run sidecar integration tests
+        if: github.event_name == 'workflow_dispatch' && inputs.run_integration
+        run: npm run test:integration
+        env:
+          CI: true
+          SIDECAR_BASE_URL: ${{ inputs.sidecar_base_url }}

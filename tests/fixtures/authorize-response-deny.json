@@ -1,0 +1,7 @@
+{
+  "allowed": false,
+  "reason": "missing_required_verification",
+  "mandate_id": null,
+  "violated_rule": "allow-payment-submit",
+  "missing_labels": ["verified:user_presence"]
+}

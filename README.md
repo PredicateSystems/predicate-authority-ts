@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/v/@predicatesystems/authority.svg)](https://www.npmjs.com/package/@predicatesystems/authority)
 
 `@predicatesystems/authority` is the TypeScript SDK companion to the Python
-`predicate-authorityd` sidecar from [predicate-authority (Python)](https://github.com/PredicateSystems/predicate-authority-ts). It keeps authority
+`predicate-authorityd` sidecar from [predicate-authority (Python)](https://github.com/PredicateSystems/predicate-authority). It keeps authority
 decisions in the sidecar and gives Node/TS runtimes a thin, typed client for
 fail-closed pre-execution checks.
 
@@ -38,7 +38,7 @@ Out of scope for this package:
 ## Known Python Parity Baseline
 
 This package targets compatibility with the current Python authority baseline in
-[predicate-authority (Python)](https://github.com/PredicateSystems/predicate-authority-ts):
+[predicate-authority (Python)](https://github.com/PredicateSystems/predicate-authority):
 
 - sidecar authorize route: `POST /v1/authorize` (`/authorize` compat alias),
 - mandate/token baseline: ES256-default signing + standard JWT claim envelope,
@@ -86,6 +86,18 @@ npm run typecheck
 npm test
 npm run build
 ```
+
+### Optional: sidecar integration tests
+
+Run integration tests against a live `predicate-authorityd`:
+
+```bash
+export SIDECAR_BASE_URL="http://127.0.0.1:8787"
+npm run test:integration
+```
+
+GitHub Actions `test.yml` also supports optional integration execution via
+manual `workflow_dispatch` inputs (`run_integration`, `sidecar_base_url`).
 
 ## Release
 

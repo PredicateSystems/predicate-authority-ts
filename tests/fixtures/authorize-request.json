@@ -1,0 +1,7 @@
+{
+  "principal": "agent:payments",
+  "action": "http.post",
+  "resource": "https://finance.example.com/transfers",
+  "intent_hash": "ih_9f9f6d9f",
+  "labels": ["verified:user_presence"]
+}

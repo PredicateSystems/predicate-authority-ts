@@ -15,6 +15,7 @@
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:integration": "RUN_SIDECAR_INTEGRATION_TESTS=true vitest run tests/integration.sidecar.test.ts",
     "test:watch": "vitest",
     "clean": "rm -rf dist",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build"
