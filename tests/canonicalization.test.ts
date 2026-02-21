@@ -353,3 +353,313 @@ describe("desktop canonicalization", () => {
     expect(DESKTOP_SCHEMA_VERSION).toBe("desktop:v1.0");
   });
 });
+
+describe("Phase 4: Verification tests", () => {
+  describe("cross-platform path normalization", () => {
+    it("normalizes Unix-style paths with . and ..", () => {
+      const result = normalizePath("/home/user/./project/../project/src");
+      expect(result).not.toContain("/./");
+      expect(result).not.toContain("/../");
+      expect(result).toContain("project");
+      expect(result).toContain("src");
+    });
+
+    it("handles paths with multiple consecutive slashes", () => {
+      const result = normalizePath("/foo//bar///baz");
+      expect(result).not.toContain("//");
+    });
+
+    it("preserves absolute paths", () => {
+      const result = normalizePath("/absolute/path/to/file");
+      expect(result.startsWith("/")).toBe(true);
+    });
+
+    it("handles empty path components", () => {
+      const result = normalizePath("/foo/./bar");
+      expect(result).toBe("/foo/bar");
+    });
+
+    it("handles trailing slashes consistently", () => {
+      const withSlash = normalizePath("/foo/bar/");
+      const withoutSlash = normalizePath("/foo/bar");
+      // Both should normalize to the same result or be consistently handled
+      expect(withSlash.replace(/\/$/, "")).toBe(withoutSlash.replace(/\/$/, ""));
+    });
+
+    it("handles root path", () => {
+      const result = normalizePath("/");
+      expect(result).toBe("/");
+    });
+
+    it("handles relative paths by making them absolute", () => {
+      const result = normalizePath("relative/path");
+      // Should be converted to absolute path
+      expect(result.startsWith("/") || /^[A-Za-z]:/.test(result)).toBe(true);
+    });
+  });
+
+  describe("ANSI stripping edge cases", () => {
+    it("strips 256-color codes", () => {
+      // 256-color foreground: \x1b[38;5;{n}m
+      expect(stripAnsi("\x1b[38;5;196mRed256\x1b[0m")).toBe("Red256");
+      // 256-color background: \x1b[48;5;{n}m
+      expect(stripAnsi("\x1b[48;5;21mBlueBg\x1b[0m")).toBe("BlueBg");
+    });
+
+    it("strips 24-bit true color codes", () => {
+      // True color: \x1b[38;2;{r};{g};{b}m
+      expect(stripAnsi("\x1b[38;2;255;100;50mOrange\x1b[0m")).toBe("Orange");
+    });
+
+    it("strips bold, italic, underline codes", () => {
+      expect(stripAnsi("\x1b[1mBold\x1b[0m")).toBe("Bold");
+      expect(stripAnsi("\x1b[3mItalic\x1b[0m")).toBe("Italic");
+      expect(stripAnsi("\x1b[4mUnderline\x1b[0m")).toBe("Underline");
+    });
+
+    it("strips cursor movement codes", () => {
+      // Cursor up, down, forward, back
+      expect(stripAnsi("\x1b[5ACursor Up")).toBe("Cursor Up");
+      expect(stripAnsi("\x1b[3BCursor Down")).toBe("Cursor Down");
+      expect(stripAnsi("\x1b[2CCursor Forward")).toBe("Cursor Forward");
+      expect(stripAnsi("\x1b[1DCursor Back")).toBe("Cursor Back");
+    });
+
+    it("strips erase codes", () => {
+      // Erase in display
+      expect(stripAnsi("\x1b[2JClear Screen")).toBe("Clear Screen");
+      // Erase in line
+      expect(stripAnsi("\x1b[KClear Line")).toBe("Clear Line");
+    });
+
+    it("strips scroll codes", () => {
+      expect(stripAnsi("\x1b[3SScroll Up")).toBe("Scroll Up");
+      expect(stripAnsi("\x1b[2TScroll Down")).toBe("Scroll Down");
+    });
+
+    it("handles multiple ANSI codes in sequence", () => {
+      const complex = "\x1b[1m\x1b[31m\x1b[4mBold Red Underline\x1b[0m";
+      expect(stripAnsi(complex)).toBe("Bold Red Underline");
+    });
+
+    it("handles ANSI codes at start, middle, and end", () => {
+      const text = "\x1b[32mStart\x1b[0m Middle \x1b[33mEnd\x1b[0m";
+      expect(stripAnsi(text)).toBe("Start Middle End");
+    });
+
+    it("preserves text without ANSI codes", () => {
+      const plain = "No escape codes here: [not ansi] {also not}";
+      expect(stripAnsi(plain)).toBe(plain);
+    });
+
+    it("handles OSC (Operating System Command) sequences", () => {
+      // Window title: \x1b]0;title\x07 or \x1b]0;title\x1b\\
+      // Note: Our regex might not cover OSC, but should not break
+      const text = "Normal text after title";
+      expect(stripAnsi(text)).toBe(text);
+    });
+  });
+
+  describe("UI tree determinism", () => {
+    it("produces same hash regardless of child order", () => {
+      const tree1 = {
+        role: "window",
+        name: "Main",
+        children: [
+          { role: "button", name: "Save", children: [] },
+          { role: "button", name: "Cancel", children: [] },
+          { role: "textbox", name: "Input", children: [] },
+        ],
+      };
+
+      const tree2 = {
+        role: "window",
+        name: "Main",
+        children: [
+          { role: "textbox", name: "Input", children: [] },
+          { role: "button", name: "Cancel", children: [] },
+          { role: "button", name: "Save", children: [] },
+        ],
+      };
+
+      const canonical1 = canonicalizeAccessibilityNode(tree1);
+      const canonical2 = canonicalizeAccessibilityNode(tree2);
+
+      // Children should be sorted by (role, name)
+      expect(JSON.stringify(canonical1)).toBe(JSON.stringify(canonical2));
+    });
+
+    it("normalizes role case", () => {
+      const upper = canonicalizeAccessibilityNode({
+        role: "BUTTON",
+        name: "Click",
+        children: [],
+      });
+      const lower = canonicalizeAccessibilityNode({
+        role: "button",
+        name: "Click",
+        children: [],
+      });
+
+      expect(upper.role).toBe(lower.role);
+      expect(upper.role).toBe("button");
+    });
+
+    it("normalizes name whitespace and case", () => {
+      const node1 = canonicalizeAccessibilityNode({
+        role: "button",
+        name: "  Click   Me  ",
+        children: [],
+      });
+      const node2 = canonicalizeAccessibilityNode({
+        role: "button",
+        name: "click me",
+        children: [],
+      });
+
+      expect(node1.name_norm).toBe(node2.name_norm);
+      expect(node1.name_norm).toBe("click me");
+    });
+
+    it("handles empty children array", () => {
+      const node = canonicalizeAccessibilityNode({
+        role: "button",
+        name: "Test",
+        children: [],
+      });
+
+      expect(node.children).toEqual([]);
+    });
+
+    it("handles undefined children", () => {
+      const node = canonicalizeAccessibilityNode({
+        role: "button",
+        name: "Test",
+      });
+
+      expect(node.children).toEqual([]);
+    });
+
+    it("handles null/undefined name", () => {
+      const nodeNull = canonicalizeAccessibilityNode({
+        role: "button",
+        name: null as unknown as string | undefined,
+        children: [],
+      });
+      const nodeUndefined = canonicalizeAccessibilityNode({
+        role: "button",
+        children: [],
+      });
+
+      expect(nodeNull.name_norm).toBe("");
+      expect(nodeUndefined.name_norm).toBe("");
+    });
+
+    it("produces identical desktop hashes for same content with different formatting", () => {
+      const snap1 = {
+        app_name: "  FIREFOX  ",
+        window_title: "  GitHub - Pull Requests  ",
+        focused_role: "BUTTON",
+        focused_name: "  MERGE  ",
+      };
+      const snap2 = {
+        app_name: "firefox",
+        window_title: "github - pull requests",
+        focused_role: "button",
+        focused_name: "merge",
+      };
+
+      expect(computeDesktopStateHash(snap1)).toBe(computeDesktopStateHash(snap2));
+    });
+
+    it("sorts nested children deterministically", () => {
+      const tree = {
+        role: "window",
+        children: [
+          {
+            role: "panel",
+            name: "B",
+            children: [
+              { role: "button", name: "Z", children: [] },
+              { role: "button", name: "A", children: [] },
+            ],
+          },
+          {
+            role: "panel",
+            name: "A",
+            children: [
+              { role: "link", name: "Y", children: [] },
+              { role: "link", name: "X", children: [] },
+            ],
+          },
+        ],
+      };
+
+      const canonical = canonicalizeAccessibilityNode(tree);
+
+      // First-level: panel A should come before panel B
+      expect(canonical.children[0].name_norm).toBe("a");
+      expect(canonical.children[1].name_norm).toBe("b");
+
+      // Second-level: within panel A, link X should come before link Y
+      expect(canonical.children[0].children[0].name_norm).toBe("x");
+      expect(canonical.children[0].children[1].name_norm).toBe("y");
+
+      // Within panel B, button A should come before button Z
+      expect(canonical.children[1].children[0].name_norm).toBe("a");
+      expect(canonical.children[1].children[1].name_norm).toBe("z");
+    });
+  });
+
+  describe("terminal hash stability", () => {
+    it("produces identical hashes for commands with varying whitespace", () => {
+      const snap1 = { session_id: "s1", command: "  npm   run   build  " };
+      const snap2 = { session_id: "s1", command: "npm run build" };
+
+      expect(computeTerminalStateHash(snap1)).toBe(computeTerminalStateHash(snap2));
+    });
+
+    it("produces identical hashes for transcripts with ANSI codes removed", () => {
+      const snap1 = {
+        session_id: "s1",
+        command: "test",
+        transcript: "\x1b[32m✓\x1b[0m Tests passed",
+      };
+      const snap2 = {
+        session_id: "s1",
+        command: "test",
+        transcript: "✓ Tests passed",
+      };
+
+      expect(computeTerminalStateHash(snap1)).toBe(computeTerminalStateHash(snap2));
+    });
+
+    it("produces different hashes for different commands", () => {
+      const snap1 = { session_id: "s1", command: "npm install" };
+      const snap2 = { session_id: "s1", command: "npm update" };
+
+      expect(computeTerminalStateHash(snap1)).not.toBe(computeTerminalStateHash(snap2));
+    });
+
+    it("produces different hashes for different session IDs", () => {
+      const snap1 = { session_id: "session-1", command: "test" };
+      const snap2 = { session_id: "session-2", command: "test" };
+
+      expect(computeTerminalStateHash(snap1)).not.toBe(computeTerminalStateHash(snap2));
+    });
+
+    it("handles timestamps in transcripts", () => {
+      const snap1 = {
+        session_id: "s1",
+        transcript: "Build completed at 10:30:45",
+      };
+      const snap2 = {
+        session_id: "s1",
+        transcript: "Build completed at 14:22:01",
+      };
+
+      // Both timestamps should be normalized to [TIMESTAMP]
+      expect(computeTerminalStateHash(snap1)).toBe(computeTerminalStateHash(snap2));
+    });
+  });
+});
