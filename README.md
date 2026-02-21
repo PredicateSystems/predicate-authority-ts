@@ -57,14 +57,69 @@ npm install @predicatesystems/authority
 
 ### Sidecar Prerequisite
 
-This SDK requires the Predicate Authority sidecar running locally. Install and start it:
+This SDK requires the Predicate Authority sidecar running locally. You can use either the Python or Rust sidecar:
+
+**Option A: Python sidecar (requires Python 3.11+)**
 
 ```bash
-# Install via pip (requires Python 3.11+)
 pip install predicate-authority
 
-# Start the sidecar
-predicate-authorityd --port 8787
+# Local mode
+predicate-authorityd --port 8787 --mode local_only --policy-file policy.json
+```
+
+**Option B: Rust sidecar (recommended for production)**
+
+Download from [rust-predicate-authorityd releases](https://github.com/PredicateSystems/predicate-authority-sidecar/releases):
+
+```bash
+# Local mode
+./predicate-authorityd run --port 8787 --mode local_only --policy-file policy.json
+```
+
+### Cloud-connected sidecar (control-plane sync)
+
+Connect the sidecar to Predicate Authority control-plane for policy sync, revocation push, and audit forwarding:
+
+```bash
+export PREDICATE_API_KEY="your-api-key"
+
+# Python sidecar
+predicate-authorityd \
+  --host 127.0.0.1 \
+  --port 8787 \
+  --mode cloud_connected \
+  --control-plane-url https://api.predicatesystems.dev \
+  --tenant-id your-tenant \
+  --project-id your-project \
+  --predicate-api-key $PREDICATE_API_KEY \
+  --sync-enabled
+
+# Or Rust sidecar
+./predicate-authorityd run \
+  --mode cloud_connected \
+  --control-plane-url https://api.predicatesystems.dev \
+  --tenant-id your-tenant \
+  --project-id your-project \
+  --predicate-api-key $PREDICATE_API_KEY \
+  --sync-enabled
+```
+
+### Local IdP mode (development/air-gapped)
+
+For development or air-gapped environments without external IdP:
+
+```bash
+export LOCAL_IDP_SIGNING_KEY="replace-with-strong-secret"
+
+predicate-authorityd \
+  --host 127.0.0.1 \
+  --port 8787 \
+  --mode local_only \
+  --policy-file policy.json \
+  --identity-mode local-idp \
+  --local-idp-issuer "http://localhost/predicate-local-idp" \
+  --local-idp-audience "api://predicate-authority"
 ```
 
 ## Quick Start
