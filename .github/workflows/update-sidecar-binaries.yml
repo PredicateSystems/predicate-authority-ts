@@ -11,7 +11,7 @@ on:
         type: string
 
 env:
-  SIDECAR_REPO: PredicateSystems/rust-predicate-authorityd
+  SIDECAR_REPO: PredicateSystems/predicate-authority-sidecar
 
 jobs:
   update-binaries:
