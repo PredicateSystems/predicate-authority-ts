@@ -5,7 +5,7 @@
   "license": "(MIT OR Apache-2.0)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/PredicateSystems/ts-predicate-authority.git",
+    "url": "https://github.com/PredicateSystems/predicate-authority-ts.git",
     "directory": "packages/authorityd"
   },
   "homepage": "https://github.com/PredicateSystems/predicate-authority-sidecar",
