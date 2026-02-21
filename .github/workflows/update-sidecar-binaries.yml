@@ -1,0 +1,184 @@
+name: Update Sidecar Binaries
+
+on:
+  repository_dispatch:
+    types: [sidecar-release]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Sidecar version tag (e.g., v0.1.0)'
+        required: true
+        type: string
+
+env:
+  SIDECAR_REPO: PredicateSystems/predicate-authority-sidecar
+
+jobs:
+  update-binaries:
+    name: Update ${{ matrix.platform }} binary
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - platform: darwin-arm64
+            artifact: predicate-authorityd-darwin-arm64.tar.gz
+            binary_name: predicate-authorityd
+          - platform: darwin-x64
+            artifact: predicate-authorityd-darwin-x64.tar.gz
+            binary_name: predicate-authorityd
+          - platform: linux-x64
+            artifact: predicate-authorityd-linux-x64.tar.gz
+            binary_name: predicate-authorityd
+          - platform: linux-arm64
+            artifact: predicate-authorityd-linux-arm64.tar.gz
+            binary_name: predicate-authorityd
+          - platform: win32-x64
+            artifact: predicate-authorityd-windows-x64.zip
+            binary_name: predicate-authorityd.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            VERSION="${{ github.event.client_payload.version }}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Using sidecar version: $VERSION"
+
+      - name: Download sidecar binary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ARTIFACT="${{ matrix.artifact }}"
+          DOWNLOAD_URL="https://github.com/${{ env.SIDECAR_REPO }}/releases/download/${VERSION}/${ARTIFACT}"
+
+          echo "Downloading from: $DOWNLOAD_URL"
+          curl -fsSL -o "$ARTIFACT" "$DOWNLOAD_URL" || {
+            echo "Failed to download $ARTIFACT"
+            exit 1
+          }
+
+      - name: Extract and place binary
+        run: |
+          ARTIFACT="${{ matrix.artifact }}"
+          BINARY="${{ matrix.binary_name }}"
+          PLATFORM="${{ matrix.platform }}"
+          TARGET_DIR="packages/authorityd-${PLATFORM}/bin"
+
+          mkdir -p "$TARGET_DIR"
+
+          if [[ "$ARTIFACT" == *.tar.gz ]]; then
+            tar -xzf "$ARTIFACT"
+          else
+            unzip -o "$ARTIFACT"
+          fi
+
+          mv "$BINARY" "$TARGET_DIR/"
+          chmod +x "$TARGET_DIR/$BINARY" || true
+
+          echo "Binary placed at: $TARGET_DIR/$BINARY"
+          ls -la "$TARGET_DIR/"
+
+      - name: Upload platform artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: authorityd-${{ matrix.platform }}
+          path: packages/authorityd-${{ matrix.platform }}/bin/
+
+  publish-packages:
+    name: Publish npm packages
+    needs: update-binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Download all platform binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: downloaded-artifacts
+
+      - name: Place binaries in packages
+        run: |
+          for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
+            mkdir -p "packages/authorityd-${platform}/bin"
+            cp -r "downloaded-artifacts/authorityd-${platform}/"* "packages/authorityd-${platform}/bin/" || true
+            ls -la "packages/authorityd-${platform}/bin/" || true
+          done
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            VERSION="${{ github.event.client_payload.version }}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          # Remove 'v' prefix if present
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Update package versions
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Update all authorityd package versions
+          for pkg in packages/authorityd packages/authorityd-darwin-arm64 packages/authorityd-darwin-x64 packages/authorityd-linux-x64 packages/authorityd-linux-arm64 packages/authorityd-win32-x64; do
+            if [ -f "$pkg/package.json" ]; then
+              jq --arg v "$VERSION" '.version = $v' "$pkg/package.json" > tmp.json && mv tmp.json "$pkg/package.json"
+              echo "Updated $pkg to version $VERSION"
+            fi
+          done
+
+          # Update optionalDependencies versions in main authorityd package
+          jq --arg v "$VERSION" '
+            .optionalDependencies |= with_entries(.value = $v)
+          ' packages/authorityd/package.json > tmp.json && mv tmp.json packages/authorityd/package.json
+
+      - name: Build main authorityd package
+        working-directory: packages/authorityd
+        run: |
+          npm install
+          npm run build
+
+      - name: Publish platform packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          for platform in darwin-arm64 darwin-x64 linux-x64 linux-arm64 win32-x64; do
+            pkg="packages/authorityd-${platform}"
+            if [ -f "$pkg/package.json" ]; then
+              echo "Publishing $pkg..."
+              cd "$pkg"
+              npm publish --access public --provenance || echo "Failed to publish $pkg (may already exist)"
+              cd ../..
+            fi
+          done
+
+      - name: Publish main authorityd package
+        working-directory: packages/authorityd
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
+
+      - name: Create commit with updated versions
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add packages/*/package.json
+          git commit -m "chore: update sidecar packages to v${VERSION}" || echo "No changes to commit"
+          git push

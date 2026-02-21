@@ -1,0 +1,48 @@
+{
+  "name": "@predicatesystems/authorityd",
+  "version": "0.1.0",
+  "description": "Predicate Authority Sidecar binary distribution for Node.js",
+  "license": "(MIT OR Apache-2.0)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/PredicateSystems/ts-predicate-authority.git",
+    "directory": "packages/authorityd"
+  },
+  "homepage": "https://github.com/PredicateSystems/predicate-authority-sidecar",
+  "keywords": [
+    "predicate",
+    "authority",
+    "sidecar",
+    "ai-agents",
+    "security",
+    "authorization"
+  ],
+  "bin": {
+    "predicate-authorityd": "./bin/predicate-authorityd"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "bin",
+    "dist",
+    "scripts"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "optionalDependencies": {
+    "@predicatesystems/authorityd-darwin-arm64": "0.1.0",
+    "@predicatesystems/authorityd-darwin-x64": "0.1.0",
+    "@predicatesystems/authorityd-linux-x64": "0.1.0",
+    "@predicatesystems/authorityd-linux-arm64": "0.1.0",
+    "@predicatesystems/authorityd-win32-x64": "0.1.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
