@@ -80,6 +80,38 @@ export {
   type VerificationSignalProvider,
 } from "./evidence/non-web.js";
 
+// Canonicalization module for reproducible state hashes
+export {
+  // Types
+  type Platform,
+  type TerminalSessionSnapshot as CanonicalTerminalInput,
+  type CanonicalTerminalSnapshot,
+  type AccessibilityNode,
+  type DesktopAccessibilitySnapshot as CanonicalDesktopInput,
+  type CanonicalAccessibilityNode,
+  type CanonicalDesktopSnapshot,
+  // Utility functions
+  normalizeText,
+  normalizeCommand,
+  stripAnsi,
+  normalizeTimestamps,
+  normalizeTranscript,
+  normalizePath,
+  isSecretKey,
+  hashEnvironment,
+  sha256,
+  // Terminal canonicalization
+  canonicalizeTerminalSnapshot,
+  computeTerminalStateHash,
+  TERMINAL_SCHEMA_VERSION,
+  // Desktop canonicalization
+  canonicalizeAccessibilityNode,
+  buildFocusedPath,
+  canonicalizeDesktopSnapshot,
+  computeDesktopStateHash,
+  DESKTOP_SCHEMA_VERSION,
+} from "./canonicalization/index.js";
+
 export interface AuthorityClientOptions {
   baseUrl: string;
   timeoutMs?: number;

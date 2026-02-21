@@ -1,3 +1,13 @@
+import {
+  type DesktopAccessibilitySnapshot as CanonicalDesktopInput,
+  type TerminalSessionSnapshot as CanonicalTerminalInput,
+  DESKTOP_SCHEMA_VERSION,
+  TERMINAL_SCHEMA_VERSION,
+  canonicalizeDesktopSnapshot,
+  canonicalizeTerminalSnapshot,
+  computeDesktopStateHash,
+  computeTerminalStateHash,
+} from "../canonicalization/index.js";
 import type { StateEvidence, VerificationEvidence, VerificationSignal } from "../contracts/action-request.js";
 
 export type EvidenceHasher = (material: string) => string;
@@ -43,6 +53,13 @@ export interface TerminalStateEvidenceOptions {
   schemaVersion?: string;
   confidence?: number;
   hasher?: EvidenceHasher;
+  /**
+   * Use canonical hashing with proper normalization.
+   * When true, applies ANSI stripping, timestamp normalization, whitespace
+   * collapsing, and other canonicalization rules for reproducible hashes.
+   * @default false (legacy mode for backward compatibility)
+   */
+  useCanonicalHash?: boolean;
 }
 
 export interface DesktopStateEvidenceOptions {
@@ -51,14 +68,40 @@ export interface DesktopStateEvidenceOptions {
   schemaVersion?: string;
   confidence?: number;
   hasher?: EvidenceHasher;
+  /**
+   * Use canonical hashing with proper normalization.
+   * When true, applies text normalization, tree sorting, and other
+   * canonicalization rules for reproducible hashes.
+   * @default false (legacy mode for backward compatibility)
+   */
+  useCanonicalHash?: boolean;
 }
 
 export function buildTerminalStateEvidence(options: TerminalStateEvidenceOptions): StateEvidence {
-  const stateHash = options.stateHash ?? hashMaterial(materializeTerminalSnapshot(options.snapshot), options.hasher);
+  let stateHash: string;
+  let schemaVersion: string;
+
+  if (options.useCanonicalHash) {
+    // Use canonical hashing with proper normalization
+    const canonicalInput: CanonicalTerminalInput = {
+      session_id: options.snapshot.session_id ?? "",
+      terminal_id: options.snapshot.terminal_id,
+      cwd: options.snapshot.cwd,
+      command: options.snapshot.command,
+      transcript: options.snapshot.transcript_hash, // Note: expects raw transcript, not pre-hashed
+    };
+    stateHash = options.stateHash ?? computeTerminalStateHash(canonicalInput);
+    schemaVersion = options.schemaVersion ?? TERMINAL_SCHEMA_VERSION;
+  } else {
+    // Legacy mode for backward compatibility
+    stateHash = options.stateHash ?? hashMaterial(materializeTerminalSnapshot(options.snapshot), options.hasher);
+    schemaVersion = options.schemaVersion ?? "terminal-v1";
+  }
+
   return {
     source: "terminal",
     state_hash: stateHash,
-    schema_version: options.schemaVersion ?? "terminal-v1",
+    schema_version: schemaVersion,
     confidence: options.confidence ?? options.snapshot.confidence,
   };
 }
@@ -66,11 +109,30 @@ export function buildTerminalStateEvidence(options: TerminalStateEvidenceOptions
 export function buildDesktopAccessibilityStateEvidence(
   options: DesktopStateEvidenceOptions,
 ): StateEvidence {
-  const stateHash = options.stateHash ?? hashMaterial(materializeDesktopSnapshot(options.snapshot), options.hasher);
+  let stateHash: string;
+  let schemaVersion: string;
+
+  if (options.useCanonicalHash) {
+    // Use canonical hashing with proper normalization
+    const canonicalInput: CanonicalDesktopInput = {
+      app_name: options.snapshot.app_name,
+      window_title: options.snapshot.window_title,
+      focused_role: options.snapshot.focused_role,
+      focused_name: options.snapshot.focused_name,
+      ui_tree_text: options.snapshot.ui_tree_hash, // Note: expects raw text, not pre-hashed
+    };
+    stateHash = options.stateHash ?? computeDesktopStateHash(canonicalInput);
+    schemaVersion = options.schemaVersion ?? DESKTOP_SCHEMA_VERSION;
+  } else {
+    // Legacy mode for backward compatibility
+    stateHash = options.stateHash ?? hashMaterial(materializeDesktopSnapshot(options.snapshot), options.hasher);
+    schemaVersion = options.schemaVersion ?? "desktop-a11y-v1";
+  }
+
   return {
     source: "desktop_accessibility",
     state_hash: stateHash,
-    schema_version: options.schemaVersion ?? "desktop-a11y-v1",
+    schema_version: schemaVersion,
     confidence: options.confidence ?? options.snapshot.confidence,
   };
 }
