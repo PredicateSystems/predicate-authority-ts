@@ -1,6 +1,6 @@
 {
   "name": "@predicatesystems/authorityd-darwin-arm64",
-  "version": "0.1.0",
+  "version": "0.3.8",
   "description": "Predicate Authority Sidecar binary for macOS ARM64 (Apple Silicon)",
   "license": "(MIT OR Apache-2.0)",
   "repository": {
@@ -8,9 +8,15 @@
     "url": "https://github.com/PredicateSystems/ts-predicate-authority.git",
     "directory": "packages/authorityd-darwin-arm64"
   },
-  "os": ["darwin"],
-  "cpu": ["arm64"],
-  "files": ["bin"],
+  "os": [
+    "darwin"
+  ],
+  "cpu": [
+    "arm64"
+  ],
+  "files": [
+    "bin"
+  ],
   "preferUnplugged": true,
   "publishConfig": {
     "access": "public"
