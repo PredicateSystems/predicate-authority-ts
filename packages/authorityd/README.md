@@ -143,7 +143,7 @@ Returns the sidecar version string.
 
 If automatic installation fails, download the binary manually:
 
-1. Go to [releases](https://github.com/PredicateSystems/predicate-authority-sidecar/releases)
+1. Go to [releases](https://github.com/PredicateSystems/rust-predicate-authorityd/releases)
 2. Download the binary for your platform
 3. Place it in your PATH or use `getSidecarPath()` to locate it
 

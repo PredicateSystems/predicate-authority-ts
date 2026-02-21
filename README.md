@@ -46,8 +46,8 @@ This SDK requires the **Predicate Authority Sidecar** daemon to be running. The 
 
 | Resource | Link |
 |----------|------|
-| Sidecar Repository | [rust-predicate-authorityd](https://github.com/PredicateSystems/predicate-authority-sidecar) |
-| Download Binaries | [Latest Releases](https://github.com/PredicateSystems/predicate-authority-sidecar/releases) |
+| Sidecar Repository | [rust-predicate-authorityd](https://github.com/PredicateSystems/rust-predicate-authorityd) |
+| Download Binaries | [Latest Releases](https://github.com/PredicateSystems/rust-predicate-authorityd/releases) |
 | License | MIT / Apache 2.0 |
 
 ### Quick Sidecar Setup
