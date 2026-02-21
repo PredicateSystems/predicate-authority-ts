@@ -5,8 +5,7 @@
 [![License](https://img.shields.io/badge/License-MIT%2FApache--2.0-blue.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/@predicatesystems/authority.svg)](https://www.npmjs.com/package/@predicatesystems/authority)
 
-`@predicatesystems/authority` is the TypeScript SDK companion to the Python
-`predicate-authorityd` sidecar from [predicate-authority (Python)](https://github.com/PredicateSystems/predicate-authority). It keeps authority
+`@predicatesystems/authority` is the TypeScript SDK for Predicate Authority. It keeps authority
 decisions in the sidecar and gives Node/TS runtimes a thin, typed client for
 fail-closed pre-execution checks.
 
@@ -33,21 +32,7 @@ This TS repository currently focuses on:
 Out of scope for this package:
 
 - re-implementing policy engine or mandate logic in TypeScript,
-- replacing Python sidecar/control-plane authority logic.
-
-## Known Python Parity Baseline
-
-This package targets compatibility with the current Python authority baseline in
-[predicate-authority (Python)](https://github.com/PredicateSystems/predicate-authority):
-
-- sidecar authorize route: `POST /v1/authorize` (`/authorize` compat alias),
-- mandate/token baseline: ES256-default signing + standard JWT claim envelope,
-- revocation baseline: explicit cascade semantics and global kill-switch runtime behavior,
-- control-plane baseline: long-poll policy/revocation sync (runtime baseline),
-- control-plane write hardening: replay freshness headers/signature support on Python client paths.
-
-The TS SDK should preserve compatibility with these runtime behaviors before
-adding TS-specific extensions.
+- replacing sidecar/control-plane authority logic.
 
 ## Installation
 
@@ -57,23 +42,25 @@ npm install @predicatesystems/authority
 
 ### Sidecar Prerequisite
 
-This SDK requires the Predicate Authority sidecar running locally. You can use either the Python or Rust sidecar:
+This SDK requires the **Predicate Authority Sidecar** daemon to be running. The sidecar is a lightweight Rust binary that handles policy evaluation and mandate signing.
 
-**Option A: Python sidecar (requires Python 3.11+)**
+| Resource | Link |
+|----------|------|
+| Sidecar Repository | [rust-predicate-authorityd](https://github.com/PredicateSystems/predicate-authority-sidecar) |
+| Download Binaries | [Latest Releases](https://github.com/PredicateSystems/predicate-authority-sidecar/releases) |
+| License | MIT / Apache 2.0 |
 
-```bash
-pip install predicate-authority
-
-# Local mode
-predicate-authorityd --port 8787 --mode local_only --policy-file policy.json
-```
-
-**Option B: Rust sidecar (recommended for production)**
-
-Download from [rust-predicate-authorityd releases](https://github.com/PredicateSystems/predicate-authority-sidecar/releases):
+### Quick Sidecar Setup
 
 ```bash
-# Local mode
+# Download the latest release for your platform
+# Linux x64, macOS x64/ARM64, Windows x64 available
+
+# Extract and run
+tar -xzf predicate-authorityd-*.tar.gz
+chmod +x predicate-authorityd
+
+# Start with a policy file (local mode)
 ./predicate-authorityd run --port 8787 --mode local_only --policy-file policy.json
 ```
 
@@ -84,19 +71,9 @@ Connect the sidecar to Predicate Authority control-plane for policy sync, revoca
 ```bash
 export PREDICATE_API_KEY="your-api-key"
 
-# Python sidecar
-predicate-authorityd \
+./predicate-authorityd run \
   --host 127.0.0.1 \
   --port 8787 \
-  --mode cloud_connected \
-  --control-plane-url https://api.predicatesystems.dev \
-  --tenant-id your-tenant \
-  --project-id your-project \
-  --predicate-api-key $PREDICATE_API_KEY \
-  --sync-enabled
-
-# Or Rust sidecar
-./predicate-authorityd run \
   --mode cloud_connected \
   --control-plane-url https://api.predicatesystems.dev \
   --tenant-id your-tenant \
@@ -112,7 +89,7 @@ For development or air-gapped environments without external IdP:
 ```bash
 export LOCAL_IDP_SIGNING_KEY="replace-with-strong-secret"
 
-predicate-authorityd \
+./predicate-authorityd run \
   --host 127.0.0.1 \
   --port 8787 \
   --mode local_only \
