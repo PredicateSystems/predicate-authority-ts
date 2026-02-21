@@ -55,6 +55,18 @@ adding TS-specific extensions.
 npm install @predicatesystems/authority
 ```
 
+### Sidecar Prerequisite
+
+This SDK requires the Predicate Authority sidecar running locally. Install and start it:
+
+```bash
+# Install via pip (requires Python 3.11+)
+pip install predicate-authority
+
+# Start the sidecar
+predicate-authorityd --port 8787
+```
+
 ## Quick Start
 
 ```ts
