@@ -26,21 +26,70 @@ The appropriate binary for your platform will be downloaded automatically via op
 
 ### CLI
 
+**IMPORTANT:** CLI arguments must be placed **before** the `run` subcommand.
+
 ```bash
+# Show help
+npx predicate-authorityd --help
+
 # Start sidecar in local mode
-npx predicate-authorityd run --port 8787 --policy-file policy.json
+npx predicate-authorityd \
+  --host 127.0.0.1 \
+  --port 8787 \
+  --mode local_only \
+  --policy-file policy.json \
+  run
 
 # Start with control-plane sync
-npx predicate-authorityd run \
+npx predicate-authorityd \
+  --host 127.0.0.1 \
+  --port 8787 \
   --mode cloud_connected \
+  --policy-file policy.json \
   --control-plane-url https://api.predicatesystems.dev \
   --tenant-id your-tenant \
   --project-id your-project \
-  --predicate-api-key $PREDICATE_API_KEY \
-  --sync-enabled
+  --predicate-api-key "$PREDICATE_API_KEY" \
+  --sync-enabled \
+  run
 
-# Show help
-npx predicate-authorityd --help
+# Using environment variables
+export PREDICATE_HOST=127.0.0.1
+export PREDICATE_PORT=8787
+export PREDICATE_MODE=local_only
+export PREDICATE_POLICY_FILE=policy.json
+npx predicate-authorityd run
+
+# Generate example config file
+npx predicate-authorityd init-config --output config.toml
+
+# Run with config file
+npx predicate-authorityd --config config.toml run
+```
+
+### CLI Reference
+
+```
+GLOBAL OPTIONS (use before 'run'):
+  -c, --config <FILE>           Path to TOML config file [env: PREDICATE_CONFIG]
+      --host <HOST>             Host to bind to [env: PREDICATE_HOST] [default: 127.0.0.1]
+      --port <PORT>             Port to bind to [env: PREDICATE_PORT] [default: 8787]
+      --mode <MODE>             local_only or cloud_connected [env: PREDICATE_MODE]
+      --policy-file <PATH>      Path to policy JSON [env: PREDICATE_POLICY_FILE]
+      --identity-file <PATH>    Path to local identity registry [env: PREDICATE_IDENTITY_FILE]
+      --log-level <LEVEL>       trace, debug, info, warn, error [env: PREDICATE_LOG_LEVEL]
+      --control-plane-url <URL> Control-plane URL [env: PREDICATE_CONTROL_PLANE_URL]
+      --tenant-id <ID>          Tenant ID [env: PREDICATE_TENANT_ID]
+      --project-id <ID>         Project ID [env: PREDICATE_PROJECT_ID]
+      --predicate-api-key <KEY> API key [env: PREDICATE_API_KEY]
+      --sync-enabled            Enable control-plane sync [env: PREDICATE_SYNC_ENABLED]
+      --fail-open               Fail open if control-plane unreachable [env: PREDICATE_FAIL_OPEN]
+
+COMMANDS:
+  run          Start the daemon (default)
+  init-config  Generate example config file
+  check-config Validate config file
+  version      Show version info
 ```
 
 ### Programmatic API

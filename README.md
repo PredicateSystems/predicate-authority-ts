@@ -48,55 +48,152 @@ This SDK requires the **Predicate Authority Sidecar** daemon to be running. The 
 |----------|------|
 | Sidecar Repository | [predicate-authority-sidecar](https://github.com/PredicateSystems/predicate-authority-sidecar) |
 | Download Binaries | [Latest Releases](https://github.com/PredicateSystems/predicate-authority-sidecar/releases) |
+| npm Package | [@predicatesystems/authorityd](https://www.npmjs.com/package/@predicatesystems/authorityd) |
 | License | MIT / Apache 2.0 |
 
 ### Quick Sidecar Setup
 
-```bash
-# Download the latest release for your platform
-# Linux x64, macOS x64/ARM64, Windows x64 available
+**Option A: Install via npm (recommended)**
 
-# Extract and run
-tar -xzf predicate-authorityd-*.tar.gz
+```bash
+npm install @predicatesystems/authorityd
+
+# The binary is automatically included for your platform
+# Run with npx:
+npx predicate-authorityd --help
+```
+
+**Option B: Manual download**
+
+```bash
+# Download from GitHub releases for your platform:
+# https://github.com/PredicateSystems/predicate-authority-sidecar/releases
+
+tar -xzf predicate-authorityd-darwin-arm64.tar.gz  # or your platform
 chmod +x predicate-authorityd
-
-# Start with a policy file (local mode)
-./predicate-authorityd run --port 8787 --mode local_only --policy-file policy.json
 ```
 
-### Cloud-connected sidecar (control-plane sync)
+### Running the Sidecar
 
-Connect the sidecar to Predicate Authority control-plane for policy sync, revocation push, and audit forwarding:
+The Rust sidecar uses **global CLI arguments** (before the `run` subcommand) or a **TOML config file**.
 
-```bash
-export PREDICATE_API_KEY="your-api-key"
-
-./predicate-authorityd run \
-  --host 127.0.0.1 \
-  --port 8787 \
-  --mode cloud_connected \
-  --control-plane-url https://api.predicatesystems.dev \
-  --tenant-id your-tenant \
-  --project-id your-project \
-  --predicate-api-key $PREDICATE_API_KEY \
-  --sync-enabled
-```
-
-### Local IdP mode (development/air-gapped)
-
-For development or air-gapped environments without external IdP:
+**Basic local mode:**
 
 ```bash
-export LOCAL_IDP_SIGNING_KEY="replace-with-strong-secret"
-
-./predicate-authorityd run \
+./predicate-authorityd \
   --host 127.0.0.1 \
   --port 8787 \
   --mode local_only \
   --policy-file policy.json \
-  --identity-mode local-idp \
-  --local-idp-issuer "http://localhost/predicate-local-idp" \
-  --local-idp-audience "api://predicate-authority"
+  run
+```
+
+**Using environment variables:**
+
+```bash
+export PREDICATE_HOST=127.0.0.1
+export PREDICATE_PORT=8787
+export PREDICATE_MODE=local_only
+export PREDICATE_POLICY_FILE=policy.json
+
+./predicate-authorityd run
+```
+
+**Using a config file:**
+
+```bash
+# Generate example config
+./predicate-authorityd init-config --output config.toml
+
+# Run with config
+./predicate-authorityd --config config.toml run
+```
+
+### Sidecar CLI Reference
+
+```
+GLOBAL OPTIONS (use before 'run'):
+  -c, --config <FILE>           Path to TOML config file [env: PREDICATE_CONFIG]
+      --host <HOST>             Host to bind to [env: PREDICATE_HOST] [default: 127.0.0.1]
+      --port <PORT>             Port to bind to [env: PREDICATE_PORT] [default: 8787]
+      --mode <MODE>             local_only or cloud_connected [env: PREDICATE_MODE]
+      --policy-file <PATH>      Path to policy JSON [env: PREDICATE_POLICY_FILE]
+      --identity-file <PATH>    Path to local identity registry [env: PREDICATE_IDENTITY_FILE]
+      --log-level <LEVEL>       trace, debug, info, warn, error [env: PREDICATE_LOG_LEVEL]
+      --control-plane-url <URL> Control-plane URL [env: PREDICATE_CONTROL_PLANE_URL]
+      --tenant-id <ID>          Tenant ID [env: PREDICATE_TENANT_ID]
+      --project-id <ID>         Project ID [env: PREDICATE_PROJECT_ID]
+      --predicate-api-key <KEY> API key [env: PREDICATE_API_KEY]
+      --sync-enabled            Enable control-plane sync [env: PREDICATE_SYNC_ENABLED]
+      --fail-open               Fail open if control-plane unreachable [env: PREDICATE_FAIL_OPEN]
+
+IDENTITY PROVIDER OPTIONS:
+      --identity-mode <MODE>    local, local-idp, oidc, entra, or okta [env: PREDICATE_IDENTITY_MODE]
+      --allow-local-fallback    Allow local/local-idp in cloud_connected mode
+      --idp-token-ttl-s <SECS>  IdP token TTL seconds [default: 300]
+      --mandate-ttl-s <SECS>    Mandate TTL seconds [default: 300]
+
+LOCAL IDP OPTIONS (for identity-mode=local-idp):
+      --local-idp-issuer <URL>  Issuer URL [env: LOCAL_IDP_ISSUER]
+      --local-idp-audience <AUD> Audience [env: LOCAL_IDP_AUDIENCE]
+      --local-idp-signing-key-env <VAR> Env var for signing key [default: LOCAL_IDP_SIGNING_KEY]
+
+OIDC OPTIONS (for identity-mode=oidc):
+      --oidc-issuer <URL>       Issuer URL [env: OIDC_ISSUER]
+      --oidc-client-id <ID>     Client ID [env: OIDC_CLIENT_ID]
+      --oidc-audience <AUD>     Audience [env: OIDC_AUDIENCE]
+
+ENTRA OPTIONS (for identity-mode=entra):
+      --entra-tenant-id <ID>    Tenant ID [env: ENTRA_TENANT_ID]
+      --entra-client-id <ID>    Client ID [env: ENTRA_CLIENT_ID]
+      --entra-audience <AUD>    Audience [env: ENTRA_AUDIENCE]
+
+OKTA OPTIONS (for identity-mode=okta):
+      --okta-issuer <URL>       Issuer URL [env: OKTA_ISSUER]
+      --okta-client-id <ID>     Client ID [env: OKTA_CLIENT_ID]
+      --okta-audience <AUD>     Audience [env: OKTA_AUDIENCE]
+      --okta-required-claims    Required claims (comma-separated)
+      --okta-required-scopes    Required scopes (comma-separated)
+      --okta-required-roles     Required roles/groups (comma-separated)
+      --okta-allowed-tenants    Allowed tenant IDs (comma-separated)
+
+COMMANDS:
+  run          Start the daemon (default)
+  init-config  Generate example config file
+  check-config Validate config file
+  version      Show version info
+```
+
+### Identity Provider Modes
+
+The sidecar supports multiple identity modes for token validation:
+
+- **local** (default): No token validation. Suitable for development.
+- **local-idp**: Self-issued JWT tokens for ephemeral task identities.
+- **oidc**: Generic OIDC provider integration.
+- **entra**: Microsoft Entra ID (Azure AD) integration.
+- **okta**: Enterprise Okta integration with JWKS validation.
+
+**Safety notes:**
+- `idp-token-ttl-s` must be >= `mandate-ttl-s` (enforced at startup)
+- In `cloud_connected` mode, `local` or `local-idp` requires `--allow-local-fallback`
+
+### Cloud-connected sidecar (control-plane sync)
+
+```bash
+export PREDICATE_API_KEY="your-api-key"
+
+./predicate-authorityd \
+  --host 127.0.0.1 \
+  --port 8787 \
+  --mode cloud_connected \
+  --policy-file policy.json \
+  --control-plane-url https://api.predicatesystems.dev \
+  --tenant-id your-tenant \
+  --project-id your-project \
+  --predicate-api-key "$PREDICATE_API_KEY" \
+  --sync-enabled \
+  run
 ```
 
 ## Quick Start
