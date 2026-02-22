@@ -5,6 +5,19 @@
 [![License](https://img.shields.io/badge/License-MIT%2FApache--2.0-blue.svg)](LICENSE)
 [![npm](https://img.shields.io/npm/v/@predicatesystems/authority.svg)](https://www.npmjs.com/package/@predicatesystems/authority)
 
+<table>
+<tr>
+<td width="50%" align="center">
+<strong>OpenClaw Agent Tool Calls</strong><br>
+<video src="https://github.com/user-attachments/assets/0fdf1ebb-6044-4288-9613-cd46f98cc284" autoplay loop muted playsinline></video>
+</td>
+<td width="50%" align="center">
+<strong>Temporal Workflows</strong><br>
+<video src="https://github.com/user-attachments/assets/511b6d38-90ab-413e-8af6-a89fc459eea5" autoplay loop muted playsinline></video>
+</td>
+</tr>
+</table>
+
 `@predicatesystems/authority` is the TypeScript SDK for Predicate Authority. It keeps authority
 decisions in the sidecar and gives Node/TS runtimes a thin, typed client for
 fail-closed pre-execution checks.
