@@ -22,6 +22,12 @@
 decisions in the sidecar and gives Node/TS runtimes a thin, typed client for
 fail-closed pre-execution checks.
 
+## 🛡️ Pre-Execution Authorization — Live in Your Terminal
+
+Watch every ALLOW/DENY decision as it happens. No guesswork. No post-mortems. Real-time control over what your agent can and cannot do.
+
+![TUI Dashboard](docs/assets/tui.gif)
+
 ## Why Predicate Authority?
 
 Most agent security failures come from over-broad delegated credentials and lack
