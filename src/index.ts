@@ -80,6 +80,46 @@ export {
   type VerificationSignalProvider,
 } from "./evidence/non-web.js";
 
+// Post-execution verification module
+export {
+  // Evidence types (discriminated union)
+  type EvidenceType,
+  type ExecutionEvidence,
+  type FileEvidence,
+  type CliEvidence,
+  type BrowserEvidence,
+  type HttpEvidence,
+  type DbEvidence,
+  type GenericEvidence,
+  // Core types
+  type ActualOperation,
+  type AuthorizedOperation,
+  type MandateDetails,
+  type RecordVerificationRequest,
+  type RecordVerificationResponse,
+  type VerificationFailureReason,
+  type VerifyRequest,
+  type VerifyResult,
+  type ResourceMatchOptions,
+  type MandateProvider,
+  type VerifierOptions,
+  // Type guards and helpers
+  getEvidenceType,
+  isMandateDetails,
+  isRecordVerificationResponse,
+  isFileEvidence,
+  isCliEvidence,
+  isBrowserEvidence,
+  isHttpEvidence,
+  isDbEvidence,
+  // Comparators
+  actionsMatch,
+  normalizeResource,
+  resourcesMatch,
+  // Verifier class
+  Verifier,
+} from "./verify/index.js";
+
 // Canonicalization module for reproducible state hashes
 export {
   // Types
