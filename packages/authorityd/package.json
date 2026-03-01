@@ -1,6 +1,6 @@
 {
   "name": "@predicatesystems/authorityd",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "Predicate Authority Sidecar binary distribution for Node.js",
   "license": "(MIT OR Apache-2.0)",
   "repository": {
@@ -37,10 +37,10 @@
     "typescript": "^5.0.0"
   },
   "optionalDependencies": {
-    "@predicatesystems/authorityd-darwin-arm64": "0.5.5",
-    "@predicatesystems/authorityd-darwin-x64": "0.5.5",
-    "@predicatesystems/authorityd-linux-x64": "0.5.5",
-    "@predicatesystems/authorityd-win32-x64": "0.5.5"
+    "@predicatesystems/authorityd-darwin-arm64": "0.5.6",
+    "@predicatesystems/authorityd-darwin-x64": "0.5.6",
+    "@predicatesystems/authorityd-linux-x64": "0.5.6",
+    "@predicatesystems/authorityd-win32-x64": "0.5.6"
   },
   "engines": {
     "node": ">=18"
