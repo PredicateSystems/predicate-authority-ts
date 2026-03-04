@@ -46,3 +46,42 @@ export {
 
 // Backward-compatible alias for the initial scaffold API.
 export type { SidecarAuthorizeRequest as AuthorizationRequest } from "./contracts/action-request.js";
+
+// Execute types for Phase 5: Execution Proxying (Zero-Trust)
+export type {
+  ExecuteRequest,
+  ExecutePayload,
+  FileWritePayload,
+  CliExecPayload,
+  HttpFetchPayload,
+  FileDeletePayload,
+  EnvReadPayload,
+  ExecuteResponse,
+  ExecuteResult,
+  FileReadResult,
+  FileWriteResult,
+  CliExecResult,
+  HttpFetchResult,
+  DirectoryEntry,
+  FileListResult,
+  FileDeleteResult,
+  EnvReadResult,
+  ExecuteErrorCode,
+} from "./contracts/execute.js";
+export {
+  isExecutePayload,
+  isFileWritePayload,
+  isCliExecPayload,
+  isHttpFetchPayload,
+  isFileDeletePayload,
+  isEnvReadPayload,
+  isExecuteResponse,
+  isExecuteResult,
+  isFileReadResult,
+  isFileWriteResult,
+  isCliExecResult,
+  isHttpFetchResult,
+  isFileListResult,
+  isFileDeleteResult,
+  isEnvReadResult,
+} from "./contracts/execute.js";

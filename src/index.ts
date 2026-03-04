@@ -2,7 +2,11 @@ import { AuthorityClientError } from "./errors.js";
 import {
   type AuthorizationResponse,
   type AuthorizeRequest,
+  type ExecutePayload,
+  type ExecuteRequest,
+  type ExecuteResponse,
   isAuthorizationResponse,
+  isExecuteResponse,
   toSidecarAuthorizeRequest,
 } from "./types.js";
 
@@ -25,6 +29,25 @@ export type {
   VerificationEvidence,
   VerificationSignal,
   VerificationStatus,
+  // Execute types for Phase 5: Execution Proxying (Zero-Trust)
+  ExecuteRequest,
+  ExecutePayload,
+  FileWritePayload,
+  CliExecPayload,
+  HttpFetchPayload,
+  FileDeletePayload,
+  EnvReadPayload,
+  ExecuteResponse,
+  ExecuteResult,
+  FileReadResult,
+  FileWriteResult,
+  CliExecResult,
+  HttpFetchResult,
+  DirectoryEntry,
+  FileListResult,
+  FileDeleteResult,
+  EnvReadResult,
+  ExecuteErrorCode,
 } from "./types.js";
 export { AuthorityClientError, type AuthorityClientErrorCode } from "./errors.js";
 export {
@@ -39,6 +62,22 @@ export {
   passedLabels,
   isSignedMandate,
   toSidecarAuthorizeRequest,
+  // Execute type guards
+  isExecutePayload,
+  isFileWritePayload,
+  isCliExecPayload,
+  isHttpFetchPayload,
+  isFileDeletePayload,
+  isEnvReadPayload,
+  isExecuteResponse,
+  isExecuteResult,
+  isFileReadResult,
+  isFileWriteResult,
+  isCliExecResult,
+  isHttpFetchResult,
+  isFileListResult,
+  isFileDeleteResult,
+  isEnvReadResult,
 } from "./types.js";
 export { effectiveMaxDelegationDepth, globMatch, matchesRule } from "./policy/matching.js";
 export { PolicyEngine, type PolicyMatchResult } from "./policy/engine.js";
@@ -158,6 +197,25 @@ export interface AuthorityClientOptions {
   maxRetries?: number;
   backoffInitialMs?: number;
   endpointPath?: "/v1/authorize" | "/authorize";
+  executeEndpointPath?: "/v1/execute" | "/execute";
+}
+
+/**
+ * Options for authorizeAndExecute convenience method
+ */
+export interface AuthorizeAndExecuteOptions {
+  /** Principal making the request */
+  principal: string;
+  /** Action to perform */
+  action: string;
+  /** Resource to operate on */
+  resource: string;
+  /** Intent hash for mandate */
+  intentHash?: string;
+  /** Labels for authorization */
+  labels?: string[];
+  /** Optional payload for the execution */
+  payload?: ExecutePayload;
 }
 
 export class AuthorityClient {
@@ -166,6 +224,7 @@ export class AuthorityClient {
   private readonly maxRetries: number;
   private readonly backoffInitialMs: number;
   private readonly endpointPath: "/v1/authorize" | "/authorize";
+  private readonly executeEndpointPath: "/v1/execute" | "/execute";
 
   constructor(options: AuthorityClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
@@ -173,6 +232,7 @@ export class AuthorityClient {
     this.maxRetries = options.maxRetries ?? 0;
     this.backoffInitialMs = options.backoffInitialMs ?? 200;
     this.endpointPath = options.endpointPath ?? "/v1/authorize";
+    this.executeEndpointPath = options.executeEndpointPath ?? "/v1/execute";
   }
 
   async authorize(request: AuthorizeRequest): Promise<AuthorizationResponse> {
@@ -241,6 +301,138 @@ export class AuthorityClient {
 
     throw new AuthorityClientError("authorize request exhausted retry budget", {
       code: "network_error",
+    });
+  }
+
+  /**
+   * Execute an operation through the sidecar (Phase 5: Execution Proxying).
+   *
+   * The sidecar validates the mandate and executes the operation on behalf of the agent,
+   * preventing "confused deputy" attacks where an agent could request authorization for
+   * one resource but access another.
+   *
+   * @param request - Execute request with mandate_id from prior authorization
+   * @returns Execute response with success status and action-specific result
+   */
+  async execute(request: ExecuteRequest): Promise<ExecuteResponse> {
+    const attempts = this.maxRetries + 1;
+
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+      try {
+        let response: Response;
+        try {
+          response = await fetch(`${this.baseUrl}${this.executeEndpointPath}`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+            },
+            body: JSON.stringify(request),
+            signal: controller.signal,
+          });
+        } catch (error) {
+          if (attempt < this.maxRetries) {
+            await sleep(this.backoffInitialMs * (attempt + 1));
+            continue;
+          }
+          if (error instanceof Error && error.name === "AbortError") {
+            throw new AuthorityClientError("execute request timed out", {
+              code: "timeout",
+              cause: error,
+            });
+          }
+          throw new AuthorityClientError("execute request failed before response", {
+            code: "network_error",
+            cause: error,
+          });
+        }
+
+        const payload = await parseJsonSafely(response);
+
+        if (!response.ok) {
+          if (response.status >= 500 && attempt < this.maxRetries) {
+            await sleep(this.backoffInitialMs * (attempt + 1));
+            continue;
+          }
+          // For execute, we may get a 4xx with a valid ExecuteResponse containing error info
+          if (isExecuteResponse(payload)) {
+            return payload;
+          }
+          throw mapHttpError(response.status, payload);
+        }
+
+        if (!isExecuteResponse(payload)) {
+          throw new AuthorityClientError("invalid execute response payload", {
+            code: "protocol_error",
+            status: response.status,
+            details: payload,
+          });
+        }
+
+        return payload;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    throw new AuthorityClientError("execute request exhausted retry budget", {
+      code: "network_error",
+    });
+  }
+
+  /**
+   * Convenience method that combines authorize + execute in a single call.
+   *
+   * This is the recommended pattern for zero-trust execution:
+   * 1. Authorize the action and obtain a mandate
+   * 2. Execute the operation through the sidecar using the mandate
+   *
+   * @param options - Authorization and execution options
+   * @returns Execute response with success status and action-specific result
+   * @throws AuthorityClientError if authorization is denied or execution fails
+   */
+  async authorizeAndExecute(options: AuthorizeAndExecuteOptions): Promise<ExecuteResponse> {
+    const { principal, action, resource, intentHash, labels, payload } = options;
+
+    // Step 1: Authorize and get mandate
+    const authResponse = await this.authorize({
+      principal,
+      action,
+      resource,
+      intent_hash: intentHash ?? `${action}:${resource}`,
+      labels: labels ?? [],
+    });
+
+    if (!authResponse.allowed) {
+      throw new AuthorityClientError(
+        `authorization denied: ${authResponse.reason}`,
+        {
+          code: "forbidden",
+          details: {
+            reason: authResponse.reason,
+            missing_labels: authResponse.missing_labels,
+          },
+        }
+      );
+    }
+
+    if (!authResponse.mandate_id) {
+      throw new AuthorityClientError(
+        "authorization succeeded but no mandate_id returned",
+        {
+          code: "protocol_error",
+          details: authResponse,
+        }
+      );
+    }
+
+    // Step 2: Execute through sidecar
+    return this.execute({
+      mandate_id: authResponse.mandate_id,
+      action,
+      resource,
+      payload,
     });
   }
 }
