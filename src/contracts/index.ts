@@ -22,3 +22,42 @@ export { isPolicyRule } from "./policy-rule.js";
 export type { ProofEvent } from "./proof-event.js";
 export { isProofEvent } from "./proof-event.js";
 export { isLabelPassed, passedLabels } from "./verification.js";
+
+// Execute types for Phase 5: Execution Proxying (Zero-Trust)
+export type {
+  ExecuteRequest,
+  ExecutePayload,
+  FileWritePayload,
+  CliExecPayload,
+  HttpFetchPayload,
+  FileDeletePayload,
+  EnvReadPayload,
+  ExecuteResponse,
+  ExecuteResult,
+  FileReadResult,
+  FileWriteResult,
+  CliExecResult,
+  HttpFetchResult,
+  DirectoryEntry,
+  FileListResult,
+  FileDeleteResult,
+  EnvReadResult,
+  ExecuteErrorCode,
+} from "./execute.js";
+export {
+  isExecutePayload,
+  isFileWritePayload,
+  isCliExecPayload,
+  isHttpFetchPayload,
+  isFileDeletePayload,
+  isEnvReadPayload,
+  isExecuteResponse,
+  isExecuteResult,
+  isFileReadResult,
+  isFileWriteResult,
+  isCliExecResult,
+  isHttpFetchResult,
+  isFileListResult,
+  isFileDeleteResult,
+  isEnvReadResult,
+} from "./execute.js";
