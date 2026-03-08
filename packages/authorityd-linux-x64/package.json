@@ -1,6 +1,6 @@
 {
   "name": "@predicatesystems/authorityd-linux-x64",
-  "version": "0.6.1",
+  "version": "0.6.5",
   "description": "Predicate Authority Sidecar binary for Linux x64",
   "license": "(MIT OR Apache-2.0)",
   "repository": {
